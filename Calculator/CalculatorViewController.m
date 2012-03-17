@@ -7,58 +7,96 @@
 //
 
 #import "CalculatorViewController.h"
+#import "CalculatorBrain.h"
+@interface CalculatorViewController()
+@property (nonatomic) BOOL userIsInTheMiddleOfEnteringANumber;
+@property (nonatomic) BOOL userHasEnteredOneDecimalPointInThisNumber;
+@property (nonatomic, strong) CalculatorBrain *brain;
+@end
 
 @implementation CalculatorViewController
 
-- (void)didReceiveMemoryWarning
+@synthesize display = _display;
+@synthesize history = _history;
+@synthesize userIsInTheMiddleOfEnteringANumber = _userIsInTheMiddleOfEnteringANumber;
+@synthesize userHasEnteredOneDecimalPointInThisNumber = _userHasEnteredOneDecimalPointInThisNumber;
+@synthesize brain = _brain;
+
+//lazy instantiation again
+-(CalculatorBrain *) brain 
 {
-    [super didReceiveMemoryWarning];
-    // Release any cached data, images, etc that aren't in use.
+    if(!_brain) {
+        _brain = [[CalculatorBrain alloc] init];
+    }
+    return _brain;
 }
 
-#pragma mark - View lifecycle
-
-- (void)viewDidLoad
+- (IBAction)digitPressed:(UIButton *)sender 
 {
-    [super viewDidLoad];
-	// Do any additional setup after loading the view, typically from a nib.
-}
-
-- (void)viewDidUnload
-{
-    [super viewDidUnload];
-    // Release any retained subviews of the main view.
-    // e.g. self.myOutlet = nil;
-}
-
-- (void)viewWillAppear:(BOOL)animated
-{
-    [super viewWillAppear:animated];
-}
-
-- (void)viewDidAppear:(BOOL)animated
-{
-    [super viewDidAppear:animated];
-}
-
-- (void)viewWillDisappear:(BOOL)animated
-{
-	[super viewWillDisappear:animated];
-}
-
-- (void)viewDidDisappear:(BOOL)animated
-{
-	[super viewDidDisappear:animated];
-}
-
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
-{
-    // Return YES for supported orientations
-    if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
-        return (interfaceOrientation != UIInterfaceOrientationPortraitUpsideDown);
+    NSString* digit = [sender currentTitle];
+    // [digit description]
+    //NSLog(@"digit pressed = %@", digit);
+    /*
+     Original implementation
+    UILabel *myDisplay = self.display; //[self display];
+    NSString *currentText = myDisplay.text; //[myDisplay text];
+    NSString *newText = [currentText stringByAppendingString:digit];
+    myDisplay.text = newText; //[myDisplay setText:newText];
+     
+    */
+    
+    if(self.userIsInTheMiddleOfEnteringANumber) {
+        self.display.text = [self.display.text stringByAppendingString:digit];
     } else {
-        return YES;
+        self.display.text = digit;
+        self.userIsInTheMiddleOfEnteringANumber = YES;
+    }
+    
+}
+
+- (IBAction)enterPressed 
+{
+    //NSLog(@"number = %g", [self.display.text doubleValue]);
+    [self.brain pushOperand:[self.display.text doubleValue]];
+    self.userIsInTheMiddleOfEnteringANumber = NO;
+    self.userHasEnteredOneDecimalPointInThisNumber = NO;
+    
+    // add the number to the history label
+    self.history.text = [self.history.text stringByAppendingFormat:
+                         @" %@", self.display.text];
+}
+
+- (IBAction)operationPressed:(UIButton *)sender 
+{
+    if(self.userIsInTheMiddleOfEnteringANumber) {
+        [self enterPressed];
+    }
+    double result = [self.brain performOperation:[sender currentTitle]];
+    NSString *resultString = [NSString stringWithFormat:@"%g", result];
+    self.display.text = resultString;
+    
+    // add the operation to the history label
+    self.history.text = [self.history.text stringByAppendingFormat:
+                         @" %@", [sender currentTitle]];
+}
+
+- (IBAction)pointPressed:(UIButton *)sender 
+{
+    if(!self.userHasEnteredOneDecimalPointInThisNumber) {
+        self.display.text = [self.display.text stringByAppendingString:@"."];
+        self.userHasEnteredOneDecimalPointInThisNumber = YES;
     }
 }
+- (IBAction)clearPressed:(UIButton *)sender 
+{
+    // wipe everything
+    [self.brain clear];
+    self.display.text = @"";
+    self.history.text = @"";
+}
 
+- (void)viewDidUnload {
+    [self setHistory:nil];
+    [super viewDidUnload];
+}
 @end
